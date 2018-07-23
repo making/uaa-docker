@@ -27,6 +27,7 @@ resources:
 jobs:
 - name: dockerhub-push-4.19
   build_logs_to_retain: 5
+  serial_groups: [uaa-docker]
   plan:
   - aggregate:
     - get: repo
@@ -69,6 +70,7 @@ jobs:
       tag: build/version
 - name: dockerhub-push-4.12
   build_logs_to_retain: 5
+  serial_groups: [uaa-docker]
   plan:
   - aggregate:
     - get: repo
@@ -84,6 +86,7 @@ jobs:
       tag: build/version
 - name: dockerhub-push-4.10
   build_logs_to_retain: 5
+  serial_groups: [uaa-docker]
   plan:
   - aggregate:
     - get: repo
