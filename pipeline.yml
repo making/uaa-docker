@@ -1,0 +1,99 @@
+---
+resources:
+- name: repo-4.19
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/uaa.git
+    branch: prerelease/4.19.x
+    tag_filter: 4.19.*
+- name: repo-4.12
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/uaa.git
+    branch: prerelease/4.12.x
+    tag_filter: 4.12.*
+- name: repo-4.10
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry/uaa.git
+    branch: prerelease/4.10.x
+    tag_filter: 4.10.*
+- name: dockerhub
+  type: docker-image
+  source:
+    repository: making/uaa
+    username: ((docker-username))
+    password: ((docker-password))
+jobs:
+- name: dockerhub-push-4.19
+  build_logs_to_retain: 5
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-4.19
+      trigger: true
+  - task: gradle
+    config: &BUILD_TASK
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: springci/spring-boot-ci-image
+          tag: master
+      inputs:
+      - name: repo
+      outputs:
+      - name: build
+      caches:
+      - path: maven
+      - path: gradle
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          set -e
+          source /opt/concourse-java.sh
+          setup_symlinks
+          cd repo
+          ./gradlew build createDockerfile -x test
+          cp -r build/* ../build/
+          cp ./uaa/build/libs/*.war ../build/
+          cp ./uaa/build/resources/main/uaa.yml ../build/
+          cat ../build/docker/Dockerfile
+          git describe --tags --exact-match > ../build/version
+  - put: dockerhub
+    params:
+      build: build
+      dockerfile: build/docker/Dockerfile
+      tag: build/version
+- name: dockerhub-push-4.12
+  build_logs_to_retain: 5
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-4.12
+      trigger: true
+  - task: gradle
+    config:
+      <<: *BUILD_TASK
+  - put: dockerhub
+    params:
+      build: build
+      dockerfile: build/docker/Dockerfile
+      tag: build/version
+- name: dockerhub-push-4.10
+  build_logs_to_retain: 5
+  plan:
+  - aggregate:
+    - get: repo
+      resource: repo-4.10
+      trigger: true
+  - task: gradle
+    config:
+      <<: *BUILD_TASK
+  - put: dockerhub
+    params:
+      build: build
+      dockerfile: build/docker/Dockerfile
+      tag: build/version
